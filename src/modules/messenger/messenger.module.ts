@@ -22,7 +22,6 @@ import { SubscribeMessageGateway } from '@modules/messenger/controllers/subscrib
     FindMessageService,
     UpdateMessageService,
     MailDeliveryEventHandler,
-    SubscribeMessageGateway,
   ],
   imports: [
     TypeOrmModule.forFeature([
