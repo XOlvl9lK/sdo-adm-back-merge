@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Stats</title>
+    <style>
+        .summary {
+            display: grid;
+            grid-template-columns: 150px auto;
+            grid-template-rows: repeat(9, 30px);
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="summary">
+        <b>Total threads:</b>
+        <p>{{ threads.length }}</p>
+        <b>Completed tasks:</b>
+        <p>{{ completedTasks }}</p>
+        <b>Min threads:</b>
+        <p>{{ poolOptions.minThreads }}</p>
+        <b>Max threads:</b>
+        <p>{{ poolOptions.maxThreads }}</p>
+        <b>Pool alive:</b>
+        <p>{{ poolAlive }} ms</p>
+        <b>Queue size:</b>
+        <p>{{ queueSize }}</p>
+        <b>Average runtime:</b>
+        <p>{{ runTime.average }} ms</p>
+        <b>Min runtime:</b>
+        <p>{{ runTime.min }} ms</p>
+        <b>Max runtime:</b>
+        <p>{{ runTime.max }} ms</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<div id="root" style="display: none">{{ domain }}</div>
+<div style="display: none">{{ arr }}</div>
+<script type="text/javascript" src="{{ domain }}/scorm-api/init.js"></script>
+<script type="text/javascript" src="{{ domain }}/scorm-api/constants.js"></script>
+<script type="text/javascript" src="{{ domain }}/scorm-api/jsonFormatter.js"></script>
+<script type="text/javascript" src="{{ domain }}/scorm-api/baseAPI.js"></script>
+<script type="text/javascript" src="{{ domain }}/scorm-api/scormAPI.js"></script>
+<script type="text/javascript" src="{{ domain }}/scorm-api/scormAPI2004.js"></script>
+<script>
+    (async () => {
+        const bool = confirm('Запустить курс?')
+
+        if (bool) {
+            const domain = location.origin
+            let [courseId, userId, performanceId] = location.pathname.split('render/')[1].split('/')
+            const response = await fetch(`${domain}/api/course/run-attempt`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify({
+                    userId,
+                    performanceId,
+                    courseId
+                }),
+            })
+            if (response.status === 400) {
+                alert('Попытки закончились')
+                window.close()
+            }
+            const { data: { lastAttempt, courseSettings } } = await (await fetch(`${domain}/api/performance/course/unauthorized/${performanceId}`)).json()
+            const attemptId = lastAttempt.id
+            const { data: suspendData } = await (await fetch(`${domain}/api/course-suspend-data?userId=${userId}&attemptId=${attemptId}`)).json()
+            let timeLeft = null
+            if (courseSettings.timeLimit > 0) {
+                const timeSpent = new Date().getTime() - new Date(lastAttempt.createdAt).getTime()
+                timeLeft = (courseSettings.timeLimit * 60 * 1000) - timeSpent
+            }
+
+            const courseWindow = window.open(domain + '/courses/' + courseId + '/index_scorm.html', '_blank', 'popup=yes,width=1024,height=768')
+            courseWindow.addEventListener('beforeunload', () => {
+                setTimeout(() => {
+                    window.close()
+                }, 300)
+            })
+            window.onbeforeunload = () => courseWindow.close()
+            if (timeLeft !== null) {
+                setTimeout(() => {
+                    courseWindow.close()
+                    setTimeout(() => {
+                        fetch(`${domain}/api/course/submit/${performanceId}/${userId}`, {
+                            method: 'POST'
+                        }).then(() => {
+                            alert('Время, отведенное на прохождение, вышло!')
+                            window.close()
+                        })
+                    })
+                }, timeLeft)
+            }
+
+            window.API_1484_11.on('Initialize', () => {
+                if (suspendData) {
+                    window.API_1484_11.SetValue('cmi.completion_status', suspendData.lessonStatus)
+                    window.API_1484_11.SetValue('cmi.location', suspendData.lessonLocation)
+                    window.API_1484_11.SetValue('cmi.suspend_data', suspendData.suspendData)
+                    // window.API_1484_11.SetValue('cmi.learner_id', userId)
+                }
+            })
+
+            let isAlreadySubmitted = false
+            window.API_1484_11.on('Commit', () => {
+                if ((window.API_1484_11.cmi.completion_status === 'passed' || window.API_1484_11.cmi.completion_status === 'completed') && !isAlreadySubmitted) {
+                    isAlreadySubmitted = true
+                    fetch(`${domain}/api/course/submit/${performanceId}/${userId}`, {
+                        method: 'POST'
+                    })
+                } else {
+                    fetch(`${domain}/api/course-suspend-data`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json;charset=utf-8'
+                        },
+                        body: JSON.stringify({
+                            userId,
+                            attemptId,
+                            lessonStatus: window.API_1484_11.cmi.completion_status,
+                            lessonLocation: window.API_1484_11.cmi.location,
+                            suspendData: window.API_1484_11.cmi.suspend_data
+                        })
+                    })
+                }
+            })
+
+            //Old version
+            window.API.on('LMSInitialize', () => {
+                if (suspendData) {
+                    window.API.LMSSetValue('cmi.core.lesson_status', suspendData.lessonStatus)
+                    window.API.LMSSetValue('cmi.core.lesson_location', suspendData.lessonLocation)
+                    window.API.LMSSetValue('cmi.suspend_data', suspendData.suspendData)
+                    window.API.LMSSetValue('cmi.core.student_id', userId)
+                }
+            })
+            window.API.on('LMSCommit', () => {
+                fetch(`${domain}/api/course-suspend-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json;charset=utf-8'
+                    },
+                    body: JSON.stringify({
+                        userId,
+                        attemptId,
+                        lessonStatus: window.API.cmi.core.lesson_status,
+                        lessonLocation: window.API.cmi.core.lesson_location,
+                        suspendData: window.API.cmi.suspend_data
+                    })
+                })
+                if (window.API.cmi.core._lesson_status === 'passed' || window.API.cmi.core._lesson_status === 'completed') {
+                    fetch(`${domain}/api/course/submit/${performanceId}`, {
+                        method: 'POST'
+                    })
+                }
+            })
+        } else {
+            window.close()
+        }
+    })()
+</script>
+</body>
+</html>
+

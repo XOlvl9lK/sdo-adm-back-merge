@@ -1,0 +1,5 @@
+project: administration-backend
+configVersion: 1
+---
+image: administration-backend
+dockerfile: Dockerfile
